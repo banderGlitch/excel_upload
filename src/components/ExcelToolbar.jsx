@@ -26,9 +26,11 @@ export default function ExcelToolbar({
           )}
         </div>
         <div className="actions">
-          <button type="button" onClick={onAddRow}>
-            Add row
-          </button>
+          {onAddRow && (
+            <button type="button" onClick={onAddRow}>
+              Add row
+            </button>
+          )}
           <button
             type="button"
             className="primary"
@@ -42,9 +44,11 @@ export default function ExcelToolbar({
           >
             Download Excel
           </button>
-          <button type="button" className="ghost" onClick={onClear}>
-            Clear
-          </button>
+          {onClear && (
+            <button type="button" className="ghost" onClick={onClear}>
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -58,8 +62,8 @@ export default function ExcelToolbar({
               {invalidCount} cell{invalidCount === 1 ? '' : 's'} need
               {invalidCount === 1 ? 's' : ''} attention.
             </strong>{' '}
-            Invalid cells are marked in red — hover or focus a cell to see what
-            to fix. Download stays locked until all values are valid.
+            Invalid cells are marked in red — focus a cell to see the fix in the
+            status bar. Submit stays locked until values are valid.
           </p>
         </div>
       )}

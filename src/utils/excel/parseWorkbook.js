@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { getUploadColumns } from '../../data/poolTemplates'
 import { validateHeadersAgainstTemplate } from './headerValidation'
 
 function padRow(row, colCount) {
@@ -41,14 +42,15 @@ export async function parseExcelAgainstTemplate(file, template) {
     throw new Error(check.message)
   }
 
-  const colCount = template.columns.length
+  const uploadColumns = getUploadColumns(template)
+  const colCount = uploadColumns.length
   const rows = data
     .slice(1)
     .filter((row) => !isEmptyRow(row))
     .map((row) => padRow(row, colCount))
 
   return {
-    columns: template.columns.map((column) => ({ ...column })),
+    columns: uploadColumns.map((column) => ({ ...column })),
     rows,
     fileName: file.name,
   }

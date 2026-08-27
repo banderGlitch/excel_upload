@@ -79,6 +79,7 @@ const ExcelRow = memo(function ExcelRow({
   onCommit,
   onDeleteRow,
   onFocusError,
+  allowDelete,
 }) {
   return (
     <tr>
@@ -94,17 +95,19 @@ const ExcelRow = memo(function ExcelRow({
           onFocusError={onFocusError}
         />
       ))}
-      <td className="row-actions">
-        <button
-          type="button"
-          className="icon-btn"
-          title="Delete row"
-          aria-label={`Delete row ${rowIndex + 1}`}
-          onClick={() => onDeleteRow(rowIndex)}
-        >
-          ×
-        </button>
-      </td>
+      {allowDelete && (
+        <td className="row-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            title="Delete row"
+            aria-label={`Delete row ${rowIndex + 1}`}
+            onClick={() => onDeleteRow(rowIndex)}
+          >
+            ×
+          </button>
+        </td>
+      )}
     </tr>
   )
 }, areRowsEqual)
@@ -115,6 +118,7 @@ function areRowsEqual(prev, next) {
   if (prev.onCommit !== next.onCommit) return false
   if (prev.onDeleteRow !== next.onDeleteRow) return false
   if (prev.onFocusError !== next.onFocusError) return false
+  if (prev.allowDelete !== next.allowDelete) return false
   if (prev.row === next.row) return true
   if (prev.row.length !== next.row.length) return false
   for (let i = 0; i < prev.row.length; i++) {
@@ -128,6 +132,7 @@ export default memo(function EditableExcelTable({
   rows,
   onCellChange,
   onDeleteRow,
+  allowDelete = true,
 }) {
   const [activeError, setActiveError] = useState(null)
 
@@ -148,13 +153,16 @@ export default memo(function EditableExcelTable({
                   </div>
                 </th>
               ))}
-              <th className="row-actions" />
+              {allowDelete && <th className="row-actions" />}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 2} className="empty-body">
+                <td
+                  colSpan={columns.length + (allowDelete ? 2 : 1)}
+                  className="empty-body"
+                >
                   No data rows. Click &quot;Add row&quot; to start editing.
                 </td>
               </tr>
@@ -168,6 +176,7 @@ export default memo(function EditableExcelTable({
                   onCommit={onCellChange}
                   onDeleteRow={onDeleteRow}
                   onFocusError={setActiveError}
+                  allowDelete={allowDelete}
                 />
               ))
             )}

@@ -1,17 +1,12 @@
 /**
  * Pool templates define fixed Excel columns users must match.
- * Later these can be loaded from an API as form objects.
+ * Same shape as GET /api/pools → data[] (see src/api/contracts.js).
  *
  * column.shape:
- *   key   – stable id (API / form field name)
+ *   key   – field id inside PoolRecord.values
  *   label – Excel header text (upload matching)
- *   type  – validation type (see COLUMN_TYPES). Optional if key hints the type
- *           (e.g. key "email" → email validator automatically).
- *
- * Adding a NEW template:
- *   1. Push another object into POOL_TEMPLATES with columns[].
- *   2. Set type: 'email' | 'date' | 'gender' | 'number' | 'phone' | 'status' | 'text'
- *   3. No other code changes — header check + cell validation + highlight apply automatically.
+ *   type  – validation type
+ *   backendOnly – if true, excluded from Excel upload + detail data columns
  */
 import { COLUMN_TYPES } from '../utils/excel/columnTypes'
 
@@ -56,7 +51,8 @@ export const POOL_TEMPLATES = [
       { key: 'phone', label: 'Phone', type: COLUMN_TYPES.PHONE },
       { key: 'email', label: 'Email', type: COLUMN_TYPES.EMAIL },
       { key: 'city', label: 'City', type: COLUMN_TYPES.TEXT },
-      { key: 'status', label: 'Status', type: COLUMN_TYPES.STATUS },
+      // Backend-only — not shown in tables or Excel upload
+      { key: 'status', label: 'Status', type: COLUMN_TYPES.STATUS, backendOnly: true },
     ],
   },
 ]
@@ -65,7 +61,17 @@ export function getPoolTemplateById(id) {
   return POOL_TEMPLATES.find((template) => template.id === id) ?? null
 }
 
-/** Excel header labels derived from column definitions */
+/** Columns that belong in Excel upload / sample / retry grid */
+export function getUploadColumns(template) {
+  return template.columns.filter((column) => !column.backendOnly)
+}
+
+/** Columns shown on pool detail tables (exclude backend-only status fields) */
+export function getVisibleTableColumns(template) {
+  return template.columns.filter((column) => !column.backendOnly)
+}
+
+/** Excel header labels derived from uploadable column definitions */
 export function getTemplateLabels(template) {
-  return template.columns.map((column) => column.label)
+  return getUploadColumns(template).map((column) => column.label)
 }

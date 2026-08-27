@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  POOL_TEMPLATES,
-  getPoolTemplateById,
-} from '../data/poolTemplates'
+import { getPoolTemplateById, getUploadColumns } from '../data/poolTemplates'
+import { RECORD_STATUS } from '../data/recordStatus'
 import {
   downloadEditedWorkbook,
   downloadSampleTemplate,
@@ -11,23 +9,55 @@ import {
   parseExcelAgainstTemplate,
 } from '../utils/excel'
 
-export function useExcelEditor() {
-  const [selectedTemplateId, setSelectedTemplateId] = useState(
-    POOL_TEMPLATES[0].id,
+function recordsToGrid(template, records) {
+  const columns = getUploadColumns(template)
+  return records.map((record) =>
+    columns.map((column) => String(record[column.key] ?? '')),
   )
-  const [columns, setColumns] = useState([])
-  const [rows, setRows] = useState([])
-  const [fileName, setFileName] = useState('')
+}
+
+/**
+ * Upload editor for a single pool (template fixed by route).
+ * @param {string} templateId
+ * @param {{ mode?: 'retry', records?: object[] } | null} bootstrap
+ */
+export function useExcelEditor(templateId, bootstrap = null) {
+  const template = getPoolTemplateById(templateId)
+  const isRetry = bootstrap?.mode === 'retry'
+  const retryRecords = bootstrap?.records ?? []
+
+  const [columns, setColumns] = useState(() =>
+    template && isRetry ? getUploadColumns(template) : [],
+  )
+  const [rows, setRows] = useState(() =>
+    template && isRetry ? recordsToGrid(template, retryRecords) : [],
+  )
+  const [fileName, setFileName] = useState(() =>
+    isRetry ? `${templateId}-retry.xlsx` : '',
+  )
   const [error, setError] = useState('')
   const [invalidCount, setInvalidCount] = useState(0)
+  const [retrySourceIds, setRetrySourceIds] = useState(() =>
+    isRetry ? retryRecords.map((row) => row.id) : [],
+  )
 
   const rowsRef = useRef(rows)
   rowsRef.current = rows
 
-  const template =
-    getPoolTemplateById(selectedTemplateId) ?? POOL_TEMPLATES[0]
+  // When Failed → Retry lands on /pools/:id/upload with selected rows
+  // Upload grid uses getUploadColumns only (no status, no remark)
+  useEffect(() => {
+    if (!template || bootstrap?.mode !== 'retry' || !bootstrap.records?.length) {
+      return
+    }
+    const uploadColumns = getUploadColumns(template)
+    setColumns(uploadColumns)
+    setRows(recordsToGrid(template, bootstrap.records))
+    setFileName(`${templateId}-upload.xlsx`)
+    setRetrySourceIds(bootstrap.records.map((row) => row.id))
+    setError('')
+  }, [template, templateId, bootstrap])
 
-  // Debounced validation scan for toolbar only — never blocks typing
   useEffect(() => {
     if (!columns.length) {
       setInvalidCount(0)
@@ -53,22 +83,13 @@ export function useExcelEditor() {
     setError('')
   }, [resetTable])
 
-  const selectTemplate = useCallback(
-    (id) => {
-      if (id === selectedTemplateId) return
-      setSelectedTemplateId(id)
-      setError('')
-      resetTable()
-    },
-    [selectedTemplateId, resetTable],
-  )
-
   const downloadSample = useCallback(() => {
-    downloadSampleTemplate(template)
+    if (template) downloadSampleTemplate(template)
   }, [template])
 
   const uploadFile = useCallback(
     async (file) => {
+      if (!template) return
       setError('')
 
       if (!isExcelFile(file)) {
@@ -113,7 +134,6 @@ export function useExcelEditor() {
   }, [])
 
   const downloadExcel = useCallback(() => {
-    // Commit the currently focused cell before export
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
     }
@@ -136,13 +156,58 @@ export function useExcelEditor() {
         columns,
         rows: currentRows,
         fileName,
-        templateId: template.id,
+        templateId: template?.id,
       })
     }, 0)
-  }, [columns, fileName, template.id])
+  }, [columns, fileName, template?.id])
+
+  const buildRecordsFromGrid = useCallback(() => {
+    if (!template) {
+      return { ok: false, message: 'Unknown pool template.', records: [] }
+    }
+
+    const currentRows = rowsRef.current
+    if (!currentRows.length) {
+      return {
+        ok: false,
+        message: 'Upload and review a file before saving to the pool.',
+        records: [],
+      }
+    }
+
+    const issues = getInvalidCells(currentRows, getUploadColumns(template))
+    const count = Object.keys(issues).length
+    if (count > 0) {
+      setInvalidCount(count)
+      return {
+        ok: false,
+        message: `Fix ${count} invalid cell${count === 1 ? '' : 's'} before saving.`,
+        records: [],
+      }
+    }
+
+    const records = currentRows.map((row, index) => {
+      const existingId = isRetry ? retrySourceIds[index] : null
+      const record = {
+        id: existingId || `upload-${Date.now()}-${index}`,
+        remark: '',
+        errorKeys: [],
+        recordStatus: isRetry
+          ? RECORD_STATUS.VALIDATED
+          : RECORD_STATUS.RECEIVED,
+      }
+
+      getUploadColumns(template).forEach((column, colIndex) => {
+        record[column.key] = row[colIndex] ?? ''
+      })
+
+      return record
+    })
+
+    return { ok: true, message: '', records }
+  }, [template, isRetry, retrySourceIds])
 
   return {
-    templates: POOL_TEMPLATES,
     template,
     columns,
     rows,
@@ -150,7 +215,7 @@ export function useExcelEditor() {
     error,
     hasData: columns.length > 0,
     invalidCount,
-    selectTemplate,
+    isRetry,
     downloadSample,
     uploadFile,
     updateCell,
@@ -158,5 +223,7 @@ export function useExcelEditor() {
     deleteRow,
     downloadExcel,
     clearAll,
+    buildRecordsFromGrid,
+    setError,
   }
 }
