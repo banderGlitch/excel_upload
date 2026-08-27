@@ -1,4 +1,4 @@
-export function isExcelFile(file) {
+export function isExcelFile(file: File | null | undefined): boolean {
   if (!file) return false
 
   const hasValidExtension = /\.(xlsx|xls|csv)$/i.test(file.name)

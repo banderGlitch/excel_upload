@@ -1,31 +1,43 @@
 import * as XLSX from 'xlsx'
+import type { PoolColumn, PoolTemplate } from '../../api/contracts'
 import { getUploadColumns } from '../../data/poolTemplates'
 import { validateHeadersAgainstTemplate } from './headerValidation'
 
-function padRow(row, colCount) {
+function padRow(row: unknown[], colCount: number): string[] {
   const filled = row.map((cell) => (cell == null ? '' : String(cell)))
   while (filled.length < colCount) filled.push('')
   return filled.slice(0, colCount)
 }
 
-function isEmptyRow(row) {
+function isEmptyRow(row: unknown[]): boolean {
   return !row.some((cell) => String(cell ?? '').trim() !== '')
+}
+
+export interface ParsedWorkbook {
+  columns: PoolColumn[]
+  rows: string[][]
+  fileName: string
 }
 
 /**
  * Reads an Excel/CSV file and validates it against the selected pool template.
- * @returns {Promise<{ columns: object[], rows: string[][], fileName: string }>}
  */
-export async function parseExcelAgainstTemplate(file, template) {
+export async function parseExcelAgainstTemplate(
+  file: File,
+  template: PoolTemplate,
+): Promise<ParsedWorkbook> {
   const buffer = await file.arrayBuffer()
   const workbook = XLSX.read(buffer, { type: 'array' })
   const firstSheetName = workbook.SheetNames[0]
   const sheet = workbook.Sheets[firstSheetName]
-  const data = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: '',
-    raw: false,
-  })
+  const data = XLSX.utils.sheet_to_json<(string | number | boolean | null)[]>(
+    sheet,
+    {
+      header: 1,
+      defval: '',
+      raw: false,
+    },
+  )
 
   if (!data.length) {
     throw new Error(
@@ -33,7 +45,7 @@ export async function parseExcelAgainstTemplate(file, template) {
     )
   }
 
-  const uploadedHeaders = data[0].map((cell) =>
+  const uploadedHeaders = (data[0] ?? []).map((cell) =>
     cell == null ? '' : String(cell),
   )
   const check = validateHeadersAgainstTemplate(uploadedHeaders, template)
@@ -46,8 +58,8 @@ export async function parseExcelAgainstTemplate(file, template) {
   const colCount = uploadColumns.length
   const rows = data
     .slice(1)
-    .filter((row) => !isEmptyRow(row))
-    .map((row) => padRow(row, colCount))
+    .filter((row) => !isEmptyRow(row ?? []))
+    .map((row) => padRow(row ?? [], colCount))
 
   return {
     columns: uploadColumns.map((column) => ({ ...column })),

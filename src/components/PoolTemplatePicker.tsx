@@ -1,11 +1,19 @@
+import type { PoolTemplate } from '../api/contracts'
 import './PoolTemplatePicker.css'
+
+interface PoolTemplatePickerProps {
+  templates: PoolTemplate[]
+  selectedTemplate: PoolTemplate
+  onSelect: (id: string) => void
+  onDownloadSample: () => void
+}
 
 export default function PoolTemplatePicker({
   templates,
   selectedTemplate,
   onSelect,
   onDownloadSample,
-}) {
+}: PoolTemplatePickerProps) {
   return (
     <section className="template-section" aria-label="Pool templates">
       <div className="section-label">Pool template</div>

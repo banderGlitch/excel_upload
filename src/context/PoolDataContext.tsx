@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from 'react'
 import { POOL_TEMPLATES } from '../data/poolTemplates'
 import {
@@ -12,16 +13,48 @@ import {
   retryPoolRowsFromUi,
   uploadPoolRowsFromUi,
 } from '../api'
+import type { UiPoolRecord } from '../api/contracts'
 import { RECORD_STATUS } from '../data/recordStatus'
 
-const PoolDataContext = createContext(null)
+export interface RetryDraft {
+  poolId: string
+  records: UiPoolRecord[]
+}
 
-export function PoolDataProvider({ children }) {
-  const [recordsByPool, setRecordsByPool] = useState({})
+export interface PoolDataContextValue {
+  loading: boolean
+  loadError: string
+  getRecords: (poolId: string) => UiPoolRecord[]
+  updateRecordField: (
+    poolId: string,
+    recordId: string,
+    fieldKey: string,
+    value: string,
+  ) => void
+  appendUploadedRecords: (
+    poolId: string,
+    uiRecords: UiPoolRecord[],
+  ) => Promise<void>
+  applyRetryRecords: (
+    poolId: string,
+    uiRecords: UiPoolRecord[],
+  ) => Promise<void>
+  retryDraft: RetryDraft | null
+  startRetryUpload: (poolId: string, records: UiPoolRecord[]) => void
+  clearRetryDraft: () => void
+  refreshPool: (poolId: string) => Promise<UiPoolRecord[]>
+  RECORD_STATUS: typeof RECORD_STATUS
+}
+
+const PoolDataContext = createContext<PoolDataContextValue | null>(null)
+
+export function PoolDataProvider({ children }: { children: ReactNode }) {
+  const [recordsByPool, setRecordsByPool] = useState<
+    Record<string, UiPoolRecord[]>
+  >({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  /** { poolId, records } set when Retry upload is clicked from Failed */
-  const [retryDraft, setRetryDraft] = useState(null)
+  const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -33,7 +66,7 @@ export function PoolDataProvider({ children }) {
         const entries = await Promise.all(
           POOL_TEMPLATES.map(async (template) => {
             const rows = await fetchPoolRecordsForUi(template.id)
-            return [template.id, rows]
+            return [template.id, rows] as const
           }),
         )
         if (!cancelled) {
@@ -41,7 +74,9 @@ export function PoolDataProvider({ children }) {
         }
       } catch (err) {
         if (!cancelled) {
-          setLoadError(err?.message || 'Failed to load pool records')
+          setLoadError(
+            err instanceof Error ? err.message : 'Failed to load pool records',
+          )
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -55,11 +90,11 @@ export function PoolDataProvider({ children }) {
   }, [])
 
   const getRecords = useCallback(
-    (poolId) => recordsByPool[poolId] ?? [],
+    (poolId: string) => recordsByPool[poolId] ?? [],
     [recordsByPool],
   )
 
-  const refreshPool = useCallback(async (poolId) => {
+  const refreshPool = useCallback(async (poolId: string) => {
     const rows = await fetchPoolRecordsForUi(poolId)
     setRecordsByPool((prev) => ({ ...prev, [poolId]: rows }))
     return rows
@@ -69,20 +104,23 @@ export function PoolDataProvider({ children }) {
    * Local edits only change field values.
    * remark + errorKeys stay as backend sent them until retry is submitted.
    */
-  const updateRecordField = useCallback((poolId, recordId, fieldKey, value) => {
-    setRecordsByPool((prev) => {
-      const list = prev[poolId] ?? []
-      return {
-        ...prev,
-        [poolId]: list.map((row) =>
-          row.id === recordId ? { ...row, [fieldKey]: value } : row,
-        ),
-      }
-    })
-  }, [])
+  const updateRecordField = useCallback(
+    (poolId: string, recordId: string, fieldKey: string, value: string) => {
+      setRecordsByPool((prev) => {
+        const list = prev[poolId] ?? []
+        return {
+          ...prev,
+          [poolId]: list.map((row) =>
+            row.id === recordId ? { ...row, [fieldKey]: value } : row,
+          ),
+        }
+      })
+    },
+    [],
+  )
 
   const appendUploadedRecords = useCallback(
-    async (poolId, uiRecords) => {
+    async (poolId: string, uiRecords: UiPoolRecord[]) => {
       await uploadPoolRowsFromUi(poolId, uiRecords)
       await refreshPool(poolId)
     },
@@ -90,7 +128,7 @@ export function PoolDataProvider({ children }) {
   )
 
   const applyRetryRecords = useCallback(
-    async (poolId, uiRecords) => {
+    async (poolId: string, uiRecords: UiPoolRecord[]) => {
       await retryPoolRowsFromUi(poolId, uiRecords)
       await refreshPool(poolId)
       setRetryDraft(null)
@@ -98,18 +136,21 @@ export function PoolDataProvider({ children }) {
     [refreshPool],
   )
 
-  const startRetryUpload = useCallback((poolId, records) => {
-    setRetryDraft({
-      poolId,
-      records: records.map((row) => ({ ...row })),
-    })
-  }, [])
+  const startRetryUpload = useCallback(
+    (poolId: string, records: UiPoolRecord[]) => {
+      setRetryDraft({
+        poolId,
+        records: records.map((row) => ({ ...row })),
+      })
+    },
+    [],
+  )
 
   const clearRetryDraft = useCallback(() => {
     setRetryDraft(null)
   }, [])
 
-  const value = useMemo(
+  const value = useMemo<PoolDataContextValue>(
     () => ({
       loading,
       loadError,
@@ -142,7 +183,7 @@ export function PoolDataProvider({ children }) {
   )
 }
 
-export function usePoolData() {
+export function usePoolData(): PoolDataContextValue {
   const ctx = useContext(PoolDataContext)
   if (!ctx) {
     throw new Error('usePoolData must be used within PoolDataProvider')

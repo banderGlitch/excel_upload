@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+  Link,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom'
+import type { UiPoolRecord } from '../api/contracts'
 import { getPoolTemplateById } from '../data/poolTemplates'
 import { usePoolData } from '../context/PoolDataContext'
 import { useExcelEditor } from '../hooks/useExcelEditor'
@@ -8,6 +15,12 @@ import ExcelToolbar from '../components/ExcelToolbar'
 import EditableExcelTable from '../components/EditableExcelTable'
 import './PoolDetailPage.css'
 import './PoolUploadPage.css'
+
+interface RetryLocationState {
+  mode?: 'retry'
+  poolId?: string
+  records?: UiPoolRecord[]
+}
 
 export default function PoolUploadPage() {
   const { poolId } = useParams()
@@ -33,28 +46,30 @@ export default function PoolUploadPage() {
       retryDraft.poolId === poolId &&
       retryDraft.records?.length
     ) {
-      return { mode: 'retry', records: retryDraft.records }
+      return { mode: 'retry' as const, records: retryDraft.records }
     }
 
-    const fromState = location.state
+    const fromState = location.state as RetryLocationState | null
     if (
       fromState?.mode === 'retry' &&
       (!fromState.poolId || fromState.poolId === poolId) &&
       fromState.records?.length
     ) {
-      return { mode: 'retry', records: fromState.records }
+      return { mode: 'retry' as const, records: fromState.records }
     }
 
     return null
   }, [retryDraft, poolId, location.state])
 
   useEffect(() => {
+    const fromState = location.state as RetryLocationState | null
     if (
-      location.state?.mode === 'retry' &&
-      location.state.records?.length &&
+      fromState?.mode === 'retry' &&
+      fromState.records?.length &&
+      poolId &&
       (!retryDraft || retryDraft.poolId !== poolId)
     ) {
-      startRetryUpload(poolId, location.state.records)
+      startRetryUpload(poolId, fromState.records)
     }
   }, [location.state, retryDraft, poolId, startRetryUpload])
 
@@ -115,7 +130,9 @@ export default function PoolUploadPage() {
         }, 1200)
       } catch (err) {
         setSuccessMessage('')
-        setError(err?.message || 'Save failed. Please try again.')
+        setError(
+          err instanceof Error ? err.message : 'Save failed. Please try again.',
+        )
       }
     }, 0)
   }

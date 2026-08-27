@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { getPoolTemplateById, getVisibleTableColumns } from '../data/poolTemplates'
+import {
+  getPoolTemplateById,
+  getVisibleTableColumns,
+} from '../data/poolTemplates'
 import {
   RECORD_STATUS,
   STATUS_FILTERS,
   isFailedStatus,
   normalizeStatus,
+  type StatusFilterId,
 } from '../data/recordStatus'
 import { usePoolData } from '../context/PoolDataContext'
 import PoolDataTable from '../components/PoolDataTable'
@@ -17,14 +21,14 @@ export default function PoolDetailPage() {
   const template = getPoolTemplateById(poolId)
   const { getRecords, updateRecordField, startRetryUpload, loading, loadError } =
     usePoolData()
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [statusFilter, setStatusFilter] = useState<StatusFilterId>('all')
+  const [selectedIds, setSelectedIds] = useState(() => new Set<string>())
 
   const records = getRecords(template?.id ?? '')
   const isFailedView = statusFilter === RECORD_STATUS.FAILED
 
   const counts = useMemo(() => {
-    const result = {
+    const result: Record<string, number> = {
       all: records.length,
       [RECORD_STATUS.RECEIVED]: 0,
       [RECORD_STATUS.VALIDATED]: 0,
@@ -54,11 +58,11 @@ export default function PoolDetailPage() {
     return <Navigate to="/" replace />
   }
 
-  const onFieldChange = (recordId, fieldKey, value) => {
+  const onFieldChange = (recordId: string, fieldKey: string, value: string) => {
     updateRecordField(template.id, recordId, fieldKey, value)
   }
 
-  const onToggleRow = (id) => {
+  const onToggleRow = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -67,7 +71,7 @@ export default function PoolDetailPage() {
     })
   }
 
-  const onToggleAll = (checked, ids) => {
+  const onToggleAll = (checked: boolean, ids: string[]) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (checked) ids.forEach((id) => next.add(id))
@@ -76,7 +80,7 @@ export default function PoolDetailPage() {
     })
   }
 
-  const onFilterChange = (id) => {
+  const onFilterChange = (id: StatusFilterId) => {
     setStatusFilter(id)
     setSelectedIds(new Set())
   }
@@ -84,7 +88,6 @@ export default function PoolDetailPage() {
   const retryUpload = () => {
     if (!selectedFailed.length) return
     const payload = selectedFailed.map((row) => ({ ...row }))
-    // Prefill this pool's upload page: /pools/vendor-pool/upload
     startRetryUpload(template.id, payload)
     navigate(`/pools/${template.id}/upload`, {
       state: { mode: 'retry', poolId: template.id, records: payload },
@@ -128,9 +131,7 @@ export default function PoolDetailPage() {
 
         {isFailedView && (
           <div className="detail-actions">
-            <span className="selection-hint">
-              {selectedIds.size} selected
-            </span>
+            <span className="selection-hint">{selectedIds.size} selected</span>
             <button
               type="button"
               className="retry-btn"

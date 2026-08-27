@@ -1,14 +1,24 @@
 import { memo, useEffect, useState } from 'react'
+import type { PoolColumn } from '../api/contracts'
 import { validateCellValue } from '../utils/excel'
 import './EditableExcelTable.css'
 
-const PLACEHOLDERS = {
+const PLACEHOLDERS: Record<string, string> = {
   gender: 'Male / Female / Other',
   date: 'YYYY-MM-DD',
   email: 'name@company.com',
   phone: '+91 9xxxxxxxxx',
   status: 'Active / Inactive / Pending',
   number: '0',
+}
+
+interface EditableCellProps {
+  value: string
+  column: PoolColumn
+  rowIndex: number
+  colIndex: number
+  onCommit: (rowIndex: number, colIndex: number, value: string) => void
+  onFocusError: (message: string | null) => void
 }
 
 function EditableCell({
@@ -18,7 +28,7 @@ function EditableCell({
   colIndex,
   onCommit,
   onFocusError,
-}) {
+}: EditableCellProps) {
   const [localValue, setLocalValue] = useState(value)
   const [isFocused, setIsFocused] = useState(false)
 
@@ -29,7 +39,7 @@ function EditableCell({
   const errorMessage = validateCellValue(localValue, column)
   const isInvalid = Boolean(errorMessage)
 
-  const commit = (next) => {
+  const commit = (next: string) => {
     if (next !== value) onCommit(rowIndex, colIndex, next)
   }
 
@@ -63,13 +73,23 @@ function EditableCell({
           placeholder={isFocused ? PLACEHOLDERS[column.type] : undefined}
         />
         {isInvalid && (
-          <span className="cell-badge" title={errorMessage} aria-hidden="true">
+          <span className="cell-badge" title={errorMessage ?? undefined} aria-hidden="true">
             !
           </span>
         )}
       </div>
     </td>
   )
+}
+
+interface ExcelRowProps {
+  row: string[]
+  rowIndex: number
+  columns: PoolColumn[]
+  onCommit: (rowIndex: number, colIndex: number, value: string) => void
+  onDeleteRow: (rowIndex: number) => void
+  onFocusError: (message: string | null) => void
+  allowDelete: boolean
 }
 
 const ExcelRow = memo(function ExcelRow({
@@ -80,7 +100,7 @@ const ExcelRow = memo(function ExcelRow({
   onDeleteRow,
   onFocusError,
   allowDelete,
-}) {
+}: ExcelRowProps) {
   return (
     <tr>
       <td className="row-num">{rowIndex + 1}</td>
@@ -112,7 +132,7 @@ const ExcelRow = memo(function ExcelRow({
   )
 }, areRowsEqual)
 
-function areRowsEqual(prev, next) {
+function areRowsEqual(prev: ExcelRowProps, next: ExcelRowProps) {
   if (prev.rowIndex !== next.rowIndex) return false
   if (prev.columns !== next.columns) return false
   if (prev.onCommit !== next.onCommit) return false
@@ -127,14 +147,22 @@ function areRowsEqual(prev, next) {
   return true
 }
 
+interface EditableExcelTableProps {
+  columns: PoolColumn[]
+  rows: string[][]
+  onCellChange: (rowIndex: number, colIndex: number, value: string) => void
+  onDeleteRow: (rowIndex: number) => void
+  allowDelete?: boolean
+}
+
 export default memo(function EditableExcelTable({
   columns,
   rows,
   onCellChange,
   onDeleteRow,
   allowDelete = true,
-}) {
-  const [activeError, setActiveError] = useState(null)
+}: EditableExcelTableProps) {
+  const [activeError, setActiveError] = useState<string | null>(null)
 
   return (
     <div className="sheet">

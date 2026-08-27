@@ -11,7 +11,9 @@
  *   errorKeys: string[]
  * }
  */
-export const MOCK_API_RECORDS = {
+import type { PoolRecord } from './contracts'
+
+export const MOCK_API_RECORDS: Record<string, PoolRecord[]> = {
   "employee-pool": [
     {
       "id": "emp-1",

@@ -1,4 +1,4 @@
-import { COLUMN_TYPES, resolveColumnType } from './columnTypes'
+import { COLUMN_TYPES, resolveColumnType, type ColumnLike } from './columnTypes'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_PATTERN = /^[+]?[\d\s()-]{7,20}$/
@@ -7,18 +7,22 @@ const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/
 const GENDER_VALUES = new Set(['male', 'female', 'other', 'm', 'f', 'o'])
 const STATUS_VALUES = new Set(['active', 'inactive', 'pending'])
 
+type Validator = (value: string) => string | null
+
 /** Accepts YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY */
-function isValidDate(value) {
+function isValidDate(value: string): boolean {
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/
   const dmy = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/
 
-  let year
-  let month
-  let day
+  let year: number | undefined
+  let month: number | undefined
+  let day: number | undefined
 
   const isoMatch = value.match(iso)
   if (isoMatch) {
-    ;[, year, month, day] = isoMatch.map(Number)
+    year = Number(isoMatch[1])
+    month = Number(isoMatch[2])
+    day = Number(isoMatch[3])
   } else {
     const dmyMatch = value.match(dmy)
     if (!dmyMatch) return false
@@ -41,7 +45,11 @@ function isValidDate(value) {
   return isRealDate(year, month, day)
 }
 
-function isRealDate(year, month, day) {
+function isRealDate(
+  year: number | undefined,
+  month: number | undefined,
+  day: number | undefined,
+): boolean {
   if (!year || !month || !day) return false
   if (month < 1 || month > 12 || day < 1 || day > 31) return false
   const date = new Date(year, month - 1, day)
@@ -56,7 +64,7 @@ function isRealDate(year, month, day) {
  * Central validator map — shared by EVERY pool template.
  * New template columns with type "email" | "date" | … use these automatically.
  */
-const VALIDATORS = {
+const VALIDATORS: Record<string, Validator> = {
   [COLUMN_TYPES.TEXT]: () => null,
 
   [COLUMN_TYPES.EMAIL]: (value) =>
@@ -91,9 +99,12 @@ const VALIDATORS = {
 /**
  * Validates a cell using the column definition from any pool template.
  * Empty cells are allowed (user may fill later).
- * @returns {string|null} error message or null when valid
+ * @returns error message or null when valid
  */
-export function validateCellValue(value, column) {
+export function validateCellValue(
+  value: unknown,
+  column: ColumnLike | null | undefined,
+): string | null {
   const trimmed = String(value ?? '').trim()
   if (!trimmed) return null
 
@@ -105,10 +116,13 @@ export function validateCellValue(value, column) {
 /**
  * Scans all rows/columns for any template.
  * Automatically picks validators from each column's type (or key fallback).
- * @returns {{ [cellKey: string]: string }} map of "row:col" → error message
+ * @returns map of "row:col" → error message
  */
-export function getInvalidCells(rows, columns) {
-  const invalid = {}
+export function getInvalidCells(
+  rows: string[][],
+  columns: ColumnLike[],
+): Record<string, string> {
+  const invalid: Record<string, string> = {}
 
   rows.forEach((row, rowIndex) => {
     columns.forEach((column, colIndex) => {

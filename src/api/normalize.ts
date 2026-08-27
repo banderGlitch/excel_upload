@@ -5,10 +5,16 @@
  * UI:   { id, ...values, recordStatus, remark, errorKeys }
  */
 
-import { API_RECORD_STATUS } from './contracts'
+import {
+  API_RECORD_STATUS,
+  type PoolRecord,
+  type PoolRecordValues,
+  type PoolTemplate,
+  type UiPoolRecord,
+} from './contracts'
 import { getUploadColumns } from '../data/poolTemplates'
 
-export function apiRecordToUi(apiRecord) {
+export function apiRecordToUi(apiRecord: PoolRecord): UiPoolRecord {
   return {
     id: apiRecord.id,
     ...(apiRecord.values ?? {}),
@@ -18,13 +24,15 @@ export function apiRecordToUi(apiRecord) {
   }
 }
 
-export function uiRecordToApi(uiRecord, template) {
-  const values = {}
+export function uiRecordToApi(
+  uiRecord: UiPoolRecord,
+  template?: PoolTemplate | null,
+): PoolRecord {
+  const values: PoolRecordValues = {}
   const uploadKeys = new Set(
     getUploadColumns(template).map((column) => column.key),
   )
 
-  // Prefer uploadable template keys; fall back to non-meta keys on the row
   if (uploadKeys.size) {
     for (const key of uploadKeys) {
       values[key] = String(uiRecord[key] ?? '')
@@ -32,7 +40,7 @@ export function uiRecordToApi(uiRecord, template) {
   } else {
     for (const [key, value] of Object.entries(uiRecord)) {
       if (['id', 'recordStatus', 'remark', 'errorKeys'].includes(key)) continue
-      values[key] = value
+      values[key] = String(value ?? '')
     }
   }
 
@@ -46,7 +54,10 @@ export function uiRecordToApi(uiRecord, template) {
 }
 
 /** Build API record from Excel grid row values (new upload — no status/remark) */
-export function gridRowToApiRecord(id, values) {
+export function gridRowToApiRecord(
+  id: string,
+  values: PoolRecordValues,
+): PoolRecord {
   return {
     id,
     values: { ...values },

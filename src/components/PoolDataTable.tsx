@@ -1,6 +1,19 @@
 import { memo, useEffect, useMemo, useState } from 'react'
+import type { PoolColumn, UiPoolRecord } from '../api/contracts'
 import { RECORD_STATUS } from '../data/recordStatus'
 import './PoolDataTable.css'
+
+interface DetailCellProps {
+  value: string
+  recordId: string
+  fieldKey: string
+  label: string
+  isError: boolean
+  editable: boolean
+  remark: string
+  onCommit: (recordId: string, fieldKey: string, value: string) => void
+  onFocusError: (message: string | null) => void
+}
 
 function DetailCell({
   value,
@@ -12,7 +25,7 @@ function DetailCell({
   remark,
   onCommit,
   onFocusError,
-}) {
+}: DetailCellProps) {
   const [localValue, setLocalValue] = useState(value)
   const [isFocused, setIsFocused] = useState(false)
 
@@ -60,11 +73,22 @@ function DetailCell({
   )
 }
 
-function statusClass(status) {
+function statusClass(status: string | undefined): string {
   if (status === RECORD_STATUS.FAILED) return 'status-failed'
   if (status === RECORD_STATUS.RECEIVED) return 'status-received'
   if (status === RECORD_STATUS.VALIDATED) return 'status-validated'
   return ''
+}
+
+interface PoolDataTableProps {
+  columns: PoolColumn[]
+  records: UiPoolRecord[]
+  selectedIds: Set<string>
+  onToggleRow: (id: string) => void
+  onToggleAll: (checked: boolean, ids: string[]) => void
+  onFieldChange: (recordId: string, fieldKey: string, value: string) => void
+  showSelection?: boolean
+  showRemark?: boolean
 }
 
 function PoolDataTable({
@@ -76,8 +100,8 @@ function PoolDataTable({
   onFieldChange,
   showSelection = false,
   showRemark = false,
-}) {
-  const [activeError, setActiveError] = useState(null)
+}: PoolDataTableProps) {
+  const [activeError, setActiveError] = useState<string | null>(null)
 
   const allSelectableIds = useMemo(
     () => records.map((row) => row.id),
@@ -89,7 +113,6 @@ function PoolDataTable({
     allSelectableIds.length > 0 &&
     selectedInView.length === allSelectableIds.length
 
-  // data columns + # + Status + optional checkbox + optional Remark
   const colSpan =
     columns.length + 2 + (showSelection ? 1 : 0) + (showRemark ? 1 : 0)
 
@@ -181,7 +204,7 @@ function PoolDataTable({
                     })}
                     <td className="status-col">
                       <span
-                        className={`status-pill ${statusClass(record.recordStatus)}`}
+                        className={`status-pill ${statusClass(String(record.recordStatus ?? ''))}`}
                       >
                         {record.recordStatus || '—'}
                       </span>

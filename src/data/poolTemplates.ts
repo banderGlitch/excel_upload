@@ -1,18 +1,14 @@
 /**
  * Pool templates define fixed Excel columns users must match.
- * Same shape as GET /api/pools → data[] (see src/api/contracts.js).
- *
- * column.shape:
- *   key   – field id inside PoolRecord.values
- *   label – Excel header text (upload matching)
- *   type  – validation type
- *   backendOnly – if true, excluded from Excel upload + detail data columns
+ * Same shape as GET /api/pools → data[] (see src/api/contracts.ts).
  */
+import type { PoolColumn, PoolTemplate } from '../api/contracts'
 import { COLUMN_TYPES } from '../utils/excel/columnTypes'
 
 export { COLUMN_TYPES }
+export type { PoolColumn, PoolTemplate }
 
-export const POOL_TEMPLATES = [
+export const POOL_TEMPLATES: PoolTemplate[] = [
   {
     id: 'employee-pool',
     name: 'Employee Pool',
@@ -52,26 +48,40 @@ export const POOL_TEMPLATES = [
       { key: 'email', label: 'Email', type: COLUMN_TYPES.EMAIL },
       { key: 'city', label: 'City', type: COLUMN_TYPES.TEXT },
       // Backend-only — not shown in tables or Excel upload
-      { key: 'status', label: 'Status', type: COLUMN_TYPES.STATUS, backendOnly: true },
+      {
+        key: 'status',
+        label: 'Status',
+        type: COLUMN_TYPES.STATUS,
+        backendOnly: true,
+      },
     ],
   },
 ]
 
-export function getPoolTemplateById(id) {
+export function getPoolTemplateById(id: string | undefined): PoolTemplate | null {
+  if (!id) return null
   return POOL_TEMPLATES.find((template) => template.id === id) ?? null
 }
 
 /** Columns that belong in Excel upload / sample / retry grid */
-export function getUploadColumns(template) {
+export function getUploadColumns(
+  template: PoolTemplate | null | undefined,
+): PoolColumn[] {
+  if (!template) return []
   return template.columns.filter((column) => !column.backendOnly)
 }
 
 /** Columns shown on pool detail tables (exclude backend-only status fields) */
-export function getVisibleTableColumns(template) {
+export function getVisibleTableColumns(
+  template: PoolTemplate | null | undefined,
+): PoolColumn[] {
+  if (!template) return []
   return template.columns.filter((column) => !column.backendOnly)
 }
 
 /** Excel header labels derived from uploadable column definitions */
-export function getTemplateLabels(template) {
+export function getTemplateLabels(
+  template: PoolTemplate | null | undefined,
+): string[] {
   return getUploadColumns(template).map((column) => column.label)
 }

@@ -1,5 +1,16 @@
 import './ExcelToolbar.css'
 
+interface ExcelToolbarProps {
+  fileName: string
+  templateName: string
+  rowCount: number
+  columnCount: number
+  invalidCount?: number
+  onAddRow?: () => void
+  onDownload: () => void
+  onClear?: () => void
+}
+
 export default function ExcelToolbar({
   fileName,
   templateName,
@@ -9,7 +20,7 @@ export default function ExcelToolbar({
   onAddRow,
   onDownload,
   onClear,
-}) {
+}: ExcelToolbarProps) {
   return (
     <div className="toolbar-block">
       <div className="toolbar">

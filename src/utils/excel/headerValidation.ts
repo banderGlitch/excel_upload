@@ -1,17 +1,24 @@
 import { getTemplateLabels } from '../../data/poolTemplates'
+import type { PoolTemplate } from '../../api/contracts'
 
-export function normalizeHeader(value) {
+export function normalizeHeader(value: unknown): string {
   return String(value ?? '')
     .trim()
     .replace(/\s+/g, ' ')
     .toLowerCase()
 }
 
+export type HeaderValidationResult =
+  | { ok: true }
+  | { ok: false; message: string }
+
 /**
  * Validates uploaded headers against a pool template's column labels.
- * @returns {{ ok: true } | { ok: false, message: string }}
  */
-export function validateHeadersAgainstTemplate(uploadedHeaders, template) {
+export function validateHeadersAgainstTemplate(
+  uploadedHeaders: unknown[],
+  template: PoolTemplate,
+): HeaderValidationResult {
   const expected = getTemplateLabels(template)
   const uploaded = uploadedHeaders.map((header) => String(header ?? '').trim())
 
@@ -33,7 +40,7 @@ export function validateHeadersAgainstTemplate(uploadedHeaders, template) {
     }
   }
 
-  const mismatches = []
+  const mismatches: string[] = []
   for (let i = 0; i < expectedNorm.length; i++) {
     if (uploadedNorm[i] !== expectedNorm[i]) {
       mismatches.push(

@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -16,10 +17,12 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^4.3.4",
     "oxlint": "^1.79.0",
+    "typescript": "^7.0.2",
     "vite": "^5.4.11"
   }
 }

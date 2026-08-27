@@ -10,21 +10,32 @@
  */
 import { POOL_TEMPLATES, getPoolTemplateById } from '../data/poolTemplates'
 import { MOCK_API_RECORDS } from './mockDb'
-import { API_RECORD_STATUS } from './contracts'
+import {
+  API_RECORD_STATUS,
+  ApiError,
+  type ApiListResponse,
+  type PoolRecord,
+  type PoolRecordValues,
+  type PoolTemplate,
+  type RetryRowPayload,
+  type RetryRowsResponse,
+  type UiPoolRecord,
+  type UploadRowsResponse,
+} from './contracts'
 import { apiRecordToUi, gridRowToApiRecord, uiRecordToApi } from './normalize'
 
-const delay = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms))
+const delay = (ms = 120) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /** In-memory store so uploads/retries persist during the session */
-const recordStore = structuredClone(MOCK_API_RECORDS)
+const recordStore: Record<string, PoolRecord[]> = structuredClone(MOCK_API_RECORDS)
 
-function ensurePool(poolId) {
+function ensurePool(poolId: string): PoolRecord[] {
   if (!recordStore[poolId]) recordStore[poolId] = []
   return recordStore[poolId]
 }
 
 /** GET /api/pools */
-export async function fetchPoolTemplates() {
+export async function fetchPoolTemplates(): Promise<ApiListResponse<PoolTemplate[]>> {
   await delay()
   return {
     data: POOL_TEMPLATES.map((template) => ({
@@ -37,13 +48,13 @@ export async function fetchPoolTemplates() {
 }
 
 /** GET /api/pools/:poolId */
-export async function fetchPoolTemplate(poolId) {
+export async function fetchPoolTemplate(
+  poolId: string,
+): Promise<ApiListResponse<PoolTemplate>> {
   await delay()
   const template = getPoolTemplateById(poolId)
   if (!template) {
-    const error = new Error(`Pool not found: ${poolId}`)
-    error.status = 404
-    throw error
+    throw new ApiError(`Pool not found: ${poolId}`, 404)
   }
   return {
     data: {
@@ -56,7 +67,9 @@ export async function fetchPoolTemplate(poolId) {
 }
 
 /** GET /api/pools/:poolId/records */
-export async function fetchPoolRecords(poolId) {
+export async function fetchPoolRecords(
+  poolId: string,
+): Promise<ApiListResponse<PoolRecord[]>> {
   await delay()
   const list = ensurePool(poolId)
   return {
@@ -74,13 +87,14 @@ export async function fetchPoolRecords(poolId) {
  * POST /api/pools/:poolId/upload
  * body: { rows: Array<Record<string, string>> }  // Excel values only
  */
-export async function uploadPoolRows(poolId, rows) {
+export async function uploadPoolRows(
+  poolId: string,
+  rows: PoolRecordValues[],
+): Promise<ApiListResponse<UploadRowsResponse>> {
   await delay()
   const template = getPoolTemplateById(poolId)
   if (!template) {
-    const error = new Error(`Pool not found: ${poolId}`)
-    error.status = 404
-    throw error
+    throw new ApiError(`Pool not found: ${poolId}`, 404)
   }
 
   const created = rows.map((values, index) =>
@@ -102,12 +116,15 @@ export async function uploadPoolRows(poolId, rows) {
  * body: { rows: Array<{ id: string, values: Record<string, string> }> }
  * Backend would re-validate; mock marks them validated and clears remark/errors.
  */
-export async function retryPoolRows(poolId, rows) {
+export async function retryPoolRows(
+  poolId: string,
+  rows: RetryRowPayload[],
+): Promise<ApiListResponse<RetryRowsResponse>> {
   await delay()
   const list = ensurePool(poolId)
   const byId = new Map(rows.map((row) => [row.id, row]))
 
-  const updated = []
+  const updated: PoolRecord[] = []
   for (let i = 0; i < list.length; i++) {
     const incoming = byId.get(list[i].id)
     if (!incoming) continue
@@ -130,12 +147,15 @@ export async function retryPoolRows(poolId, rows) {
 }
 
 /** Helpers used by the React layer (already UI-normalized) */
-export async function fetchPoolRecordsForUi(poolId) {
+export async function fetchPoolRecordsForUi(poolId: string): Promise<UiPoolRecord[]> {
   const response = await fetchPoolRecords(poolId)
   return response.data.map(apiRecordToUi)
 }
 
-export async function uploadPoolRowsFromUi(poolId, uiRecords) {
+export async function uploadPoolRowsFromUi(
+  poolId: string,
+  uiRecords: UiPoolRecord[],
+) {
   const template = getPoolTemplateById(poolId)
   const rows = uiRecords.map((row) => {
     const api = uiRecordToApi(row, template)
@@ -144,7 +164,10 @@ export async function uploadPoolRowsFromUi(poolId, uiRecords) {
   return uploadPoolRows(poolId, rows)
 }
 
-export async function retryPoolRowsFromUi(poolId, uiRecords) {
+export async function retryPoolRowsFromUi(
+  poolId: string,
+  uiRecords: UiPoolRecord[],
+) {
   const template = getPoolTemplateById(poolId)
   const rows = uiRecords.map((row) => {
     const api = uiRecordToApi(row, template)
