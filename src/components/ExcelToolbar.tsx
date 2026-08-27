@@ -1,4 +1,5 @@
-import './ExcelToolbar.css'
+import { Alert, Box, Button, Chip, Typography } from '@mui/material'
+import { tokens } from '../theme/theme'
 
 interface ExcelToolbarProps {
   fileName: string
@@ -22,29 +23,56 @@ export default function ExcelToolbar({
   onClear,
 }: ExcelToolbarProps) {
   return (
-    <div className="toolbar-block">
-      <div className="toolbar">
-        <div className="file-meta">
-          <span className="file-name">{fileName}</span>
-          <span className="meta-pill">{templateName}</span>
-          <span className="meta-pill">
-            {rowCount} row{rowCount !== 1 ? 's' : ''} · {columnCount} columns
-          </span>
+    <Box sx={{ my: 1, mb: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1.5,
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1.25,
+            alignItems: 'center',
+          }}
+        >
+          <Typography sx={{ fontWeight: 600, color: 'text.primary', wordBreak: 'break-all' }}>
+            {fileName}
+          </Typography>
+          <Chip size="small" label={templateName} variant="outlined" />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={`${rowCount} row${rowCount !== 1 ? 's' : ''} · ${columnCount} columns`}
+          />
           {invalidCount > 0 && (
-            <span className="meta-pill invalid-pill">
-              {invalidCount} invalid
-            </span>
+            <Chip
+              size="small"
+              label={`${invalidCount} invalid`}
+              sx={{
+                fontWeight: 600,
+                color: tokens.errorText,
+                bgcolor: tokens.errorSoft,
+                borderColor: tokens.errorBorder,
+              }}
+              variant="outlined"
+            />
           )}
-        </div>
-        <div className="actions">
+        </Box>
+
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {onAddRow && (
-            <button type="button" onClick={onAddRow}>
+            <Button variant="outlined" color="inherit" onClick={onAddRow}>
               Add row
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className="primary"
+          <Button
+            variant="contained"
             onClick={onDownload}
             disabled={invalidCount > 0}
             title={
@@ -54,30 +82,25 @@ export default function ExcelToolbar({
             }
           >
             Download Excel
-          </button>
+          </Button>
           {onClear && (
-            <button type="button" className="ghost" onClick={onClear}>
+            <Button variant="text" color="inherit" onClick={onClear}>
               Clear
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {invalidCount > 0 && (
-        <div className="validation-banner" role="status">
-          <span className="validation-banner-icon" aria-hidden="true">
-            !
-          </span>
-          <p>
-            <strong>
-              {invalidCount} cell{invalidCount === 1 ? '' : 's'} need
-              {invalidCount === 1 ? 's' : ''} attention.
-            </strong>{' '}
-            Invalid cells are marked in red — focus a cell to see the fix in the
-            status bar. Submit stays locked until values are valid.
-          </p>
-        </div>
+        <Alert severity="error" sx={{ mt: 1.5 }} role="status">
+          <Typography component="span" sx={{ fontWeight: 650, mr: 0.5 }}>
+            {invalidCount} cell{invalidCount === 1 ? '' : 's'} need
+            {invalidCount === 1 ? 's' : ''} attention.
+          </Typography>
+          Invalid cells are marked in red — focus a cell to see the fix in the
+          status bar. Submit stays locked until values are valid.
+        </Alert>
       )}
-    </div>
+    </Box>
   )
 }

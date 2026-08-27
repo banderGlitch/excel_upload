@@ -1,7 +1,30 @@
 import { memo, useEffect, useState } from 'react'
+import {
+  Box,
+  IconButton,
+  InputBase,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
 import type { PoolColumn } from '../api/contracts'
 import { validateCellValue } from '../utils/excel'
-import './EditableExcelTable.css'
+import { tokens } from '../theme/theme'
+import {
+  cellInputSx,
+  invalidCellSx,
+  rowNumSx,
+  sheetScrollSx,
+  sheetStatusSx,
+  sheetSx,
+  sheetTableSx,
+  thInnerSx,
+} from '../theme/sheetStyles'
 
 const PLACEHOLDERS: Record<string, string> = {
   gender: 'Male / Female / Other',
@@ -44,9 +67,9 @@ function EditableCell({
   }
 
   return (
-    <td className={isInvalid ? 'is-invalid' : undefined}>
-      <div className="cell">
-        <input
+    <TableCell sx={isInvalid ? invalidCellSx : undefined}>
+      <Box sx={{ position: 'relative', height: 36, width: '100%' }}>
+        <InputBase
           value={localValue}
           onChange={(e) => {
             const next = e.target.value
@@ -67,18 +90,41 @@ function EditableCell({
             commit(localValue)
             onFocusError(null)
           }}
-          aria-invalid={isInvalid}
-          aria-label={`Row ${rowIndex + 1}, ${column.label}`}
-          title={errorMessage || undefined}
-          placeholder={isFocused ? PLACEHOLDERS[column.type] : undefined}
+          inputProps={{
+            'aria-invalid': isInvalid,
+            'aria-label': `Row ${rowIndex + 1}, ${column.label}`,
+            title: errorMessage || undefined,
+            placeholder: isFocused ? PLACEHOLDERS[column.type] : undefined,
+          }}
+          sx={cellInputSx(isInvalid)}
         />
         {isInvalid && (
-          <span className="cell-badge" title={errorMessage ?? undefined} aria-hidden="true">
+          <Box
+            component="span"
+            aria-hidden
+            title={errorMessage ?? undefined}
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              right: 8,
+              transform: 'translateY(-50%)',
+              width: 15,
+              height: 15,
+              borderRadius: '50%',
+              bgcolor: 'error.main',
+              color: '#fff',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              lineHeight: '15px',
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }}
+          >
             !
-          </span>
+          </Box>
         )}
-      </div>
-    </td>
+      </Box>
+    </TableCell>
   )
 }
 
@@ -102,8 +148,10 @@ const ExcelRow = memo(function ExcelRow({
   allowDelete,
 }: ExcelRowProps) {
   return (
-    <tr>
-      <td className="row-num">{rowIndex + 1}</td>
+    <TableRow>
+      <TableCell className="row-num" sx={rowNumSx}>
+        {rowIndex + 1}
+      </TableCell>
       {row.map((cell, colIndex) => (
         <EditableCell
           key={columns[colIndex].key}
@@ -116,19 +164,33 @@ const ExcelRow = memo(function ExcelRow({
         />
       ))}
       {allowDelete && (
-        <td className="row-actions">
-          <button
-            type="button"
-            className="icon-btn"
+        <TableCell
+          className="row-actions"
+          sx={{
+            width: 40,
+            minWidth: 40,
+            textAlign: 'center',
+            bgcolor: `${tokens.surface} !important`,
+          }}
+        >
+          <IconButton
+            size="small"
             title="Delete row"
             aria-label={`Delete row ${rowIndex + 1}`}
             onClick={() => onDeleteRow(rowIndex)}
+            sx={{
+              width: 24,
+              height: 24,
+              borderRadius: '5px',
+              color: 'text.secondary',
+              '&:hover': { bgcolor: tokens.errorSoft, color: 'error.main' },
+            }}
           >
-            ×
-          </button>
-        </td>
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </TableCell>
       )}
-    </tr>
+    </TableRow>
   )
 }, areRowsEqual)
 
@@ -165,35 +227,60 @@ export default memo(function EditableExcelTable({
   const [activeError, setActiveError] = useState<string | null>(null)
 
   return (
-    <div className="sheet">
-      <div className="sheet-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th className="row-num">#</th>
+    <Box sx={sheetSx}>
+      <TableContainer sx={sheetScrollSx}>
+        <Table sx={sheetTableSx}>
+          <TableHead>
+            <TableRow>
+              <TableCell className="row-num" sx={rowNumSx}>
+                #
+              </TableCell>
               {columns.map((column) => (
-                <th key={column.key} className={`col-${column.type || 'text'}`}>
-                  <div className="th-inner">
+                <TableCell key={column.key}>
+                  <Box sx={thInnerSx}>
                     <span>{column.label}</span>
                     {column.type && column.type !== 'text' && (
-                      <em>{column.type}</em>
+                      <Box
+                        component="em"
+                        sx={{
+                          fontStyle: 'normal',
+                          fontSize: '0.62rem',
+                          fontWeight: 650,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.03em',
+                          color: 'primary.main',
+                          bgcolor: tokens.accentSoft,
+                          borderRadius: 999,
+                          px: 0.75,
+                          py: '1px',
+                        }}
+                      >
+                        {column.type}
+                      </Box>
                     )}
-                  </div>
-                </th>
+                  </Box>
+                </TableCell>
               ))}
-              {allowDelete && <th className="row-actions" />}
-            </tr>
-          </thead>
-          <tbody>
+              {allowDelete && (
+                <TableCell
+                  className="row-actions"
+                  sx={{ width: 40, minWidth: 40, bgcolor: tokens.headerBg }}
+                />
+              )}
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {rows.length === 0 ? (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={columns.length + (allowDelete ? 2 : 1)}
-                  className="empty-body"
+                  sx={{ height: 'auto !important', py: 3.5, px: 2, textAlign: 'center' }}
                 >
-                  No data rows. Click &quot;Add row&quot; to start editing.
-                </td>
-              </tr>
+                  <Typography color="text.secondary">
+                    No data rows. Click &quot;Add row&quot; to start editing.
+                  </Typography>
+                </TableCell>
+              </TableRow>
             ) : (
               rows.map((row, rowIndex) => (
                 <ExcelRow
@@ -208,27 +295,39 @@ export default memo(function EditableExcelTable({
                 />
               ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      <div
-        className={`sheet-status ${activeError ? 'has-error' : ''}`}
-        role="status"
-        aria-live="polite"
-      >
+      <Box sx={sheetStatusSx(Boolean(activeError))} role="status" aria-live="polite">
         {activeError ? (
           <>
-            <span className="sheet-status-mark">!</span>
+            <Box
+              component="span"
+              sx={{
+                flexShrink: 0,
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                bgcolor: 'error.main',
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                lineHeight: '16px',
+                textAlign: 'center',
+              }}
+            >
+              !
+            </Box>
             <span>{activeError}</span>
           </>
         ) : (
-          <span className="sheet-status-hint">
+          <Typography component="span" sx={{ opacity: 0.8, fontSize: 'inherit' }}>
             Click a cell to edit. Invalid cells show a red mark — focus one to
             see the fix here.
-          </span>
+          </Typography>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 })

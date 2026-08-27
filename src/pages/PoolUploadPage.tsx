@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Alert, Box, Button, Link, Typography } from '@mui/material'
 import {
-  Link,
+  Link as RouterLink,
   Navigate,
   useLocation,
   useNavigate,
@@ -13,8 +14,8 @@ import { useExcelEditor } from '../hooks/useExcelEditor'
 import ExcelDropzone from '../components/ExcelDropzone'
 import ExcelToolbar from '../components/ExcelToolbar'
 import EditableExcelTable from '../components/EditableExcelTable'
-import './PoolDetailPage.css'
-import './PoolUploadPage.css'
+import AppShell from '../components/AppShell'
+import { tokens } from '../theme/theme'
 
 interface RetryLocationState {
   mode?: 'retry'
@@ -36,10 +37,6 @@ export default function PoolUploadPage() {
   } = usePoolData()
   const [successMessage, setSuccessMessage] = useState('')
 
-  /**
-   * Failed → lands on same upload URL with selected rows prefilled.
-   * e.g. http://localhost:5173/pools/vendor-pool/upload
-   */
   const bootstrap = useMemo(() => {
     if (
       retryDraft &&
@@ -138,30 +135,55 @@ export default function PoolUploadPage() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header detail-header">
-        <div>
+    <AppShell>
+      <Box
+        component="header"
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2,
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+          justifyContent: 'space-between',
+          mb: 3,
+        }}
+      >
+        <Box>
           <Link
+            component={RouterLink}
             to={`/pools/${templateDef.id}`}
-            className="back-link"
+            underline="hover"
+            color="primary"
             onClick={() => clearRetryDraft()}
+            sx={{ display: 'inline-block', mb: 1, fontSize: '0.9rem' }}
           >
             ← Back to {templateDef.name}
           </Link>
-          <h1>Upload Excel</h1>
-          <p>
-            Download the sample for <strong>{templateDef.name}</strong>, fill
-            rows, then upload. Headers must match exactly.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="upload-btn secondary"
+          <Typography variant="h1" sx={{ mb: 1, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+            Upload Excel
+          </Typography>
+          <Typography>
+            Download the sample for{' '}
+            <Box component="strong" sx={{ color: 'text.primary' }}>
+              {templateDef.name}
+            </Box>
+            , fill rows, then upload. Headers must match exactly.
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          color="inherit"
           onClick={downloadSample}
+          sx={{
+            flexShrink: 0,
+            borderColor: tokens.border,
+            color: 'text.primary',
+            bgcolor: 'background.paper',
+            '&:hover': { bgcolor: tokens.surface, borderColor: tokens.border },
+          }}
         >
           Download sample
-        </button>
-      </header>
+        </Button>
+      </Box>
 
       {!isRetry && (
         <ExcelDropzone
@@ -171,8 +193,16 @@ export default function PoolUploadPage() {
         />
       )}
 
-      {error && <p className="error">{error}</p>}
-      {successMessage && <p className="success">{successMessage}</p>}
+      {error && (
+        <Alert severity="error" sx={{ mt: 1.5 }}>
+          {error}
+        </Alert>
+      )}
+      {successMessage && (
+        <Alert severity="success" sx={{ mt: 1.5 }}>
+          {successMessage}
+        </Alert>
+      )}
 
       {hasData && (
         <>
@@ -187,16 +217,15 @@ export default function PoolUploadPage() {
             onClear={isRetry ? undefined : clearAll}
           />
 
-          <div className="upload-actions">
-            <button
-              type="button"
-              className="save-btn"
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+            <Button
+              variant="contained"
               onClick={saveAndReturn}
               disabled={invalidCount > 0 || Boolean(successMessage)}
             >
               Save to pool & return
-            </button>
-          </div>
+            </Button>
+          </Box>
 
           <EditableExcelTable
             columns={columns}
@@ -207,6 +236,6 @@ export default function PoolUploadPage() {
           />
         </>
       )}
-    </div>
+    </AppShell>
   )
 }

@@ -1,7 +1,30 @@
 import { memo, useEffect, useMemo, useState } from 'react'
+import {
+  Box,
+  Checkbox,
+  Chip,
+  InputBase,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
 import type { PoolColumn, UiPoolRecord } from '../api/contracts'
 import { RECORD_STATUS } from '../data/recordStatus'
-import './PoolDataTable.css'
+import { tokens } from '../theme/theme'
+import {
+  cellInputSx,
+  invalidCellSx,
+  rowNumSx,
+  sheetScrollSx,
+  sheetStatusSx,
+  sheetSx,
+  sheetTableSx,
+  thInnerSx,
+} from '../theme/sheetStyles'
 
 interface DetailCellProps {
   value: string
@@ -35,19 +58,36 @@ function DetailCell({
 
   if (!editable) {
     return (
-      <td className={isError ? 'is-invalid' : undefined}>
-        <div className="cell">
-          <span className="cell-text">{value}</span>
-          {isError && <span className="cell-badge">!</span>}
-        </div>
-      </td>
+      <TableCell sx={isError ? invalidCellSx : undefined}>
+        <Box sx={{ position: 'relative', height: 36, width: '100%' }}>
+          <Typography
+            component="span"
+            sx={{
+              display: 'block',
+              height: 36,
+              lineHeight: '36px',
+              pl: 1.25,
+              pr: 3.5,
+              fontSize: '0.84rem',
+              color: isError ? tokens.errorText : 'text.primary',
+              fontWeight: isError ? 550 : 400,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {value}
+          </Typography>
+          {isError && <ErrorBadge />}
+        </Box>
+      </TableCell>
     )
   }
 
   return (
-    <td className={isError ? 'is-invalid' : undefined}>
-      <div className="cell">
-        <input
+    <TableCell sx={isError ? invalidCellSx : undefined}>
+      <Box sx={{ position: 'relative', height: 36, width: '100%' }}>
+        <InputBase
           value={localValue}
           onChange={(e) => setLocalValue(e.target.value)}
           onFocus={() => {
@@ -63,21 +103,89 @@ function DetailCell({
               onCommit(recordId, fieldKey, localValue)
             }
           }}
-          aria-invalid={isError}
-          aria-label={label}
-          title={isError ? remark || 'Needs correction' : undefined}
+          inputProps={{
+            'aria-invalid': isError,
+            'aria-label': label,
+            title: isError ? remark || 'Needs correction' : undefined,
+          }}
+          sx={cellInputSx(isError)}
         />
-        {isError && <span className="cell-badge">!</span>}
-      </div>
-    </td>
+        {isError && <ErrorBadge />}
+      </Box>
+    </TableCell>
   )
 }
 
-function statusClass(status: string | undefined): string {
-  if (status === RECORD_STATUS.FAILED) return 'status-failed'
-  if (status === RECORD_STATUS.RECEIVED) return 'status-received'
-  if (status === RECORD_STATUS.VALIDATED) return 'status-validated'
-  return ''
+function ErrorBadge() {
+  return (
+    <Box
+      component="span"
+      aria-hidden
+      sx={{
+        position: 'absolute',
+        top: '50%',
+        right: 8,
+        transform: 'translateY(-50%)',
+        width: 15,
+        height: 15,
+        borderRadius: '50%',
+        bgcolor: 'error.main',
+        color: '#fff',
+        fontSize: '0.65rem',
+        fontWeight: 700,
+        lineHeight: '15px',
+        textAlign: 'center',
+        pointerEvents: 'none',
+      }}
+    >
+      !
+    </Box>
+  )
+}
+
+function StatusPill({ status }: { status: string | undefined }) {
+  const value = status || '—'
+  let colors: { color: string; bgcolor: string; borderColor: string } = {
+    color: '#15202b',
+    bgcolor: tokens.surface,
+    borderColor: tokens.border,
+  }
+
+  if (status === RECORD_STATUS.FAILED) {
+    colors = {
+      color: tokens.errorText,
+      bgcolor: tokens.errorSoft,
+      borderColor: tokens.errorBorder,
+    }
+  } else if (status === RECORD_STATUS.VALIDATED) {
+    colors = {
+      color: '#166534',
+      bgcolor: '#f0fdf4',
+      borderColor: '#bbf7d0',
+    }
+  } else if (status === RECORD_STATUS.RECEIVED) {
+    colors = {
+      color: '#1d4ed8',
+      bgcolor: '#eff6ff',
+      borderColor: '#bfdbfe',
+    }
+  }
+
+  return (
+    <Chip
+      size="small"
+      label={value}
+      variant="outlined"
+      sx={{
+        ml: 1,
+        height: 22,
+        fontSize: '0.72rem',
+        fontWeight: 650,
+        textTransform: 'capitalize',
+        ...colors,
+      }}
+    />
+  )
 }
 
 interface PoolDataTableProps {
@@ -116,53 +224,70 @@ function PoolDataTable({
   const colSpan =
     columns.length + 2 + (showSelection ? 1 : 0) + (showRemark ? 1 : 0)
 
+  const checkColSx = {
+    width: 40,
+    minWidth: 40,
+    textAlign: 'center' as const,
+    bgcolor: `${tokens.surface} !important`,
+  }
+
   return (
-    <div className="sheet">
-      <div className="sheet-scroll">
-        <table>
-          <thead>
-            <tr>
+    <Box sx={sheetSx}>
+      <TableContainer sx={{ ...sheetScrollSx, '& .MuiTable-root': { minWidth: 980 } }}>
+        <Table sx={sheetTableSx}>
+          <TableHead>
+            <TableRow>
               {showSelection && (
-                <th className="check-col">
-                  <input
-                    type="checkbox"
+                <TableCell className="check-col" sx={checkColSx}>
+                  <Checkbox
+                    size="small"
                     checked={allSelected}
                     onChange={(e) =>
                       onToggleAll(e.target.checked, allSelectableIds)
                     }
-                    aria-label="Select all failed rows"
+                    slotProps={{
+                      input: { 'aria-label': 'Select all failed rows' },
+                    }}
+                    sx={{ p: 0.5 }}
                   />
-                </th>
+                </TableCell>
               )}
-              <th className="row-num">#</th>
+              <TableCell className="row-num" sx={rowNumSx}>
+                #
+              </TableCell>
               {columns.map((column) => (
-                <th key={column.key}>
-                  <div className="th-inner">
+                <TableCell key={column.key}>
+                  <Box sx={thInnerSx}>
                     <span>{column.label}</span>
-                  </div>
-                </th>
+                  </Box>
+                </TableCell>
               ))}
-              <th className="status-col">
-                <div className="th-inner">
+              <TableCell sx={{ width: 110, minWidth: 100 }}>
+                <Box sx={thInnerSx}>
                   <span>Status</span>
-                </div>
-              </th>
+                </Box>
+              </TableCell>
               {showRemark && (
-                <th className="remark-col">
-                  <div className="th-inner">
+                <TableCell sx={{ width: '20%', minWidth: 160 }}>
+                  <Box sx={thInnerSx}>
                     <span>Remark</span>
-                  </div>
-                </th>
+                  </Box>
+                </TableCell>
               )}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {records.length === 0 ? (
-              <tr>
-                <td colSpan={colSpan} className="empty-body">
-                  No records for this filter.
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell
+                  colSpan={colSpan}
+                  sx={{ height: 'auto !important', py: 3.5, px: 2, textAlign: 'center' }}
+                >
+                  <Typography color="text.secondary">
+                    No records for this filter.
+                  </Typography>
+                </TableCell>
+              </TableRow>
             ) : (
               records.map((record, index) => {
                 const errorKeys = new Set(record.errorKeys ?? [])
@@ -170,21 +295,28 @@ function PoolDataTable({
                 const isFailed = record.recordStatus === RECORD_STATUS.FAILED
 
                 return (
-                  <tr
+                  <TableRow
                     key={record.id}
                     className={checked ? 'is-selected' : undefined}
                   >
                     {showSelection && (
-                      <td className="check-col">
-                        <input
-                          type="checkbox"
+                      <TableCell className="check-col" sx={checkColSx}>
+                        <Checkbox
+                          size="small"
                           checked={checked}
                           onChange={() => onToggleRow(record.id)}
-                          aria-label={`Select row ${index + 1}`}
+                          slotProps={{
+                            input: {
+                              'aria-label': `Select row ${index + 1}`,
+                            },
+                          }}
+                          sx={{ p: 0.5 }}
                         />
-                      </td>
+                      </TableCell>
                     )}
-                    <td className="row-num">{index + 1}</td>
+                    <TableCell className="row-num" sx={rowNumSx}>
+                      {index + 1}
+                    </TableCell>
                     {columns.map((column) => {
                       const isError = isFailed && errorKeys.has(column.key)
                       return (
@@ -202,53 +334,72 @@ function PoolDataTable({
                         />
                       )
                     })}
-                    <td className="status-col">
-                      <span
-                        className={`status-pill ${statusClass(String(record.recordStatus ?? ''))}`}
-                      >
-                        {record.recordStatus || '—'}
-                      </span>
-                    </td>
+                    <TableCell>
+                      <StatusPill status={String(record.recordStatus ?? '')} />
+                    </TableCell>
                     {showRemark && (
-                      <td
-                        className={`remark-col ${record.remark ? 'has-remark' : ''}`}
-                      >
-                        <div className="remark-text">
+                      <TableCell>
+                        <Box
+                          sx={{
+                            px: 1.25,
+                            py: 0.75,
+                            fontSize: '0.78rem',
+                            lineHeight: 1.35,
+                            color: record.remark
+                              ? tokens.errorText
+                              : 'text.secondary',
+                            fontWeight: record.remark ? 550 : 400,
+                            maxHeight: 48,
+                            overflow: 'auto',
+                          }}
+                        >
                           {record.remark || '—'}
-                        </div>
-                      </td>
+                        </Box>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 )
               })
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      <div
-        className={`sheet-status ${activeError ? 'has-error' : ''}`}
-        role="status"
-        aria-live="polite"
-      >
+      <Box sx={sheetStatusSx(Boolean(activeError))} role="status" aria-live="polite">
         {activeError ? (
           <>
-            <span className="sheet-status-mark">!</span>
+            <Box
+              component="span"
+              sx={{
+                flexShrink: 0,
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                bgcolor: 'error.main',
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                lineHeight: '16px',
+                textAlign: 'center',
+              }}
+            >
+              !
+            </Box>
             <span>{activeError}</span>
           </>
         ) : showSelection ? (
-          <span className="sheet-status-hint">
+          <Typography component="span" sx={{ opacity: 0.8, fontSize: 'inherit' }}>
             Select failed rows, fix highlighted cells, then Retry upload.
             Upload page will not include Status or Remark.
-          </span>
+          </Typography>
         ) : (
-          <span className="sheet-status-hint">
+          <Typography component="span" sx={{ opacity: 0.8, fontSize: 'inherit' }}>
             Switch to Failed to select rows, edit highlighted cells, and retry
             upload.
-          </span>
+          </Typography>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 }
 

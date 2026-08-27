@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Link,
+  Typography,
+} from '@mui/material'
+import { Link as RouterLink, Navigate, useNavigate, useParams } from 'react-router-dom'
 import {
   getPoolTemplateById,
   getVisibleTableColumns,
@@ -13,7 +21,8 @@ import {
 } from '../data/recordStatus'
 import { usePoolData } from '../context/PoolDataContext'
 import PoolDataTable from '../components/PoolDataTable'
-import './PoolDetailPage.css'
+import AppShell from '../components/AppShell'
+import { tokens } from '../theme/theme'
 
 export default function PoolDetailPage() {
   const { poolId } = useParams()
@@ -95,46 +104,116 @@ export default function PoolDetailPage() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header detail-header">
-        <div>
-          <Link to="/" className="back-link">
+    <AppShell>
+      <Box
+        component="header"
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2,
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+          justifyContent: 'space-between',
+          mb: 3,
+        }}
+      >
+        <Box>
+          <Link
+            component={RouterLink}
+            to="/"
+            underline="hover"
+            color="primary"
+            sx={{ display: 'inline-block', mb: 1, fontSize: '0.9rem' }}
+          >
             ← All pools
           </Link>
-          <h1>{template.name}</h1>
-          <p>{template.description}</p>
-        </div>
-        <Link to={`/pools/${template.id}/upload`} className="upload-btn">
+          <Typography variant="h1" sx={{ mb: 1, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+            {template.name}
+          </Typography>
+          <Typography>{template.description}</Typography>
+        </Box>
+        <Button
+          component={RouterLink}
+          to={`/pools/${template.id}/upload`}
+          variant="contained"
+          sx={{ flexShrink: 0, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
+        >
           Upload Excel
-        </Link>
-      </header>
+        </Button>
+      </Box>
 
-      {loading && <p className="sheet-status-hint">Loading records…</p>}
-      {loadError && <p className="error">{loadError}</p>}
+      {loading && (
+        <Typography sx={{ opacity: 0.8, mb: 1.5 }}>Loading records…</Typography>
+      )}
+      {loadError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {loadError}
+        </Alert>
+      )}
 
-      <div className="detail-toolbar">
-        <div className="status-filters" role="tablist" aria-label="Status filter">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              role="tab"
-              aria-selected={statusFilter === filter.id}
-              className={`filter-btn ${statusFilter === filter.id ? 'active' : ''}`}
-              onClick={() => onFilterChange(filter.id)}
-            >
-              {filter.label}
-              <span>{counts[filter.id] ?? 0}</span>
-            </button>
-          ))}
-        </div>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1.5,
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
+          mb: 1.75,
+        }}
+      >
+        <Box
+          role="tablist"
+          aria-label="Status filter"
+          sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}
+        >
+          {STATUS_FILTERS.map((filter) => {
+            const active = statusFilter === filter.id
+            return (
+              <Chip
+                key={filter.id}
+                role="tab"
+                aria-selected={active}
+                clickable
+                onClick={() => onFilterChange(filter.id)}
+                label={
+                  <Box
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
+                  >
+                    <span>{filter.label}</span>
+                    <Box
+                      component="span"
+                      sx={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: active ? '#fff' : 'text.secondary',
+                        bgcolor: active ? 'primary.main' : tokens.surface,
+                        borderRadius: 999,
+                        px: 0.875,
+                        py: '1px',
+                      }}
+                    >
+                      {counts[filter.id] ?? 0}
+                    </Box>
+                  </Box>
+                }
+                variant="outlined"
+                sx={{
+                  height: 34,
+                  borderColor: active ? 'primary.main' : tokens.border,
+                  bgcolor: active ? tokens.accentSoft : 'background.paper',
+                  color: 'text.primary',
+                  '& .MuiChip-label': { px: 1.5 },
+                }}
+              />
+            )
+          })}
+        </Box>
 
         {isFailedView && (
-          <div className="detail-actions">
-            <span className="selection-hint">{selectedIds.size} selected</span>
-            <button
-              type="button"
-              className="retry-btn"
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, alignItems: 'center' }}>
+            <Typography variant="body2">{selectedIds.size} selected</Typography>
+            <Button
+              variant="contained"
               disabled={!selectedFailed.length}
               title={
                 selectedFailed.length
@@ -144,10 +223,10 @@ export default function PoolDetailPage() {
               onClick={retryUpload}
             >
               Retry upload
-            </button>
-          </div>
+            </Button>
+          </Box>
         )}
-      </div>
+      </Box>
 
       <PoolDataTable
         columns={getVisibleTableColumns(template)}
@@ -159,6 +238,6 @@ export default function PoolDetailPage() {
         showSelection={isFailedView}
         showRemark={isFailedView}
       />
-    </div>
+    </AppShell>
   )
 }
