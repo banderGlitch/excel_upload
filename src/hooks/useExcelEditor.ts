@@ -65,7 +65,7 @@ export function useExcelEditor(
     const uploadColumns = getUploadColumns(template)
     setColumns(uploadColumns)
     setRows(recordsToGrid(template, bootstrap.records))
-    setFileName(`${templateId}-upload.xlsx`)
+    setFileName(`${templateId}-retry.xlsx`)
     setRetrySourceIds(bootstrap.records.map((row) => row.id))
     setError('')
   }, [template, templateId, bootstrap])
